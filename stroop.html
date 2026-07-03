@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ストループ課題</title>
+    <!-- jsPsychのCDN読み込み -->
+    <script src="https://unpkg.com/jspsych@7.3.3"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.0"></script>
+    <link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" type="text/css">
+    
+    <style>
+        /* 全体デザイン設定 */
+        body {
+            background-color: #FFFFFF;
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+        }
+        /* 刺激のフォントサイズ設定 */
+        .stimulus-text {
+            font-size: 60px;
+            font-weight: bold;
+        }
+        /* 教示のフォントサイズ設定 */
+        .instruction-text {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // jsPsychの初期化
+        const jsPsych = initJsPsych({
+            on_finish: function() {
+                // 実験終了時にCSVデータを画面に表示
+                jsPsych.data.displayData('csv');
+            }
+        });
+
+        // 刺激定義
+        const stimuli = [
+            { text: "赤", color: "red", condition: "congruent" },
+            { text: "青", color: "blue", condition: "congruent" },
+            { text: "緑", color: "green", condition: "congruent" },
+            { text: "赤", color: "blue", condition: "incongruent" },
+            { text: "赤", color: "green", condition: "incongruent" },
+            { text: "青", color: "red", condition: "incongruent" },
+            { text: "青", color: "green", condition: "incongruent" },
+            { text: "緑", color: "red", condition: "incongruent" },
+            { text: "緑", color: "blue", condition: "incongruent" },
+            { text: "赤", color: "red", condition: "congruent" }
+        ];
+
+        // タイムラインの構築
+        const timeline = [];
+
+        // (1) 全画面化
+        // ユーザーインタラクションを必須とするため、ボタンクリックで全画面化する設定
+        // ブラウザの許可ポリシーに抵触しないよう、必ずユーザーのクリックをトリガーにする
+        timeline.push({
+            type: jsPsychFullscreen,
+            fullscreen_mode: true,
+            message: '<p>この実験では全画面表示を使用します。</p><p>以下のボタンをクリックして開始してください。</p>',
+            button_label: '全画面表示で開始する'
+        });
+
+        // (2) 教示画面
+        timeline.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <div class="instruction-text">
+                    <p>文字の『色』をキーボードで答えてください。</p>
+                    <p>赤色なら 'r' / 青色なら 'b' / 緑色なら 'g'</p>
+                    <p>スペースキーで開始します。</p>
+                </div>
+            `,
+            choices: [' ']
+        });
+
+        // (3) メイン試行ループ (ランダムにシャッフル)
+        const shuffledStimuli = jsPsych.randomization.repeat(stimuli, 1);
+
+        shuffledStimuli.forEach(item => {
+            // a. 注視点
+            timeline.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: '<div class="stimulus-text">+</div>',
+                choices: "NO_KEYS",
+                trial_duration: 500
+            });
+
+            // b. 刺激提示
+            timeline.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: `<div class="stimulus-text" style="color: ${item.color}">${item.text}</div>`,
+                choices: ['r', 'b', 'g'],
+                data: {
+                    condition: item.condition,
+                    correct_color: item.color,
+                    target_text: item.text
+                }
+            });
+
+            // c. 試行間隔
+            timeline.push({
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: '',
+                choices: "NO_KEYS",
+                trial_duration: 1000
+            });
+        });
+
+        // 実験開始
+        jsPsych.run(timeline);
+    </script>
+</body>
+</html>
