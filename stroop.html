@@ -11,12 +11,15 @@
     <style>
         body { background-color: #FFFFFF; font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; }
         .stimulus-text { font-size: 60px; font-weight: bold; }
-        .instruction-text { font-size: 24px; text-align: left; display: inline-block; }
+        /* 中央揃え設定に変更 */
+        .instruction-text { font-size: 24px; text-align: center; }
         .color-r { color: red; font-weight: bold; }
         .color-b { color: blue; font-weight: bold; }
         .color-g { color: green; font-weight: bold; }
         .bold-text { font-weight: bold; }
         .black-text { color: black; font-weight: normal; }
+        /* 行間調整用スタイル */
+        .instruction-row { margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -72,10 +75,9 @@
             stimulus: `
                 <div class="instruction-text">
                     <p>文字の<span class="bold-text">『色』</span>を答えてください。</p>
-                    <p><span class="color-r">赤</span><span class="black-text">色</span>なら 'R'</p>
-                    <p><span class="color-b">青</span><span class="black-text">色</span>なら 'B'</p>
-                    <p><span class="color-g">緑</span><span class="black-text">色</span>なら 'G'</p>
-                    <br>
+                    <div class="instruction-row"><span class="color-r">赤</span><span class="black-text">色</span>なら 'R'</div>
+                    <div class="instruction-row"><span class="color-b">青</span><span class="black-text">色</span>なら 'B'</div>
+                    <div class="instruction-row"><span class="color-g">緑</span><span class="black-text">色</span>なら 'G'</div>
                     <p>スペースキーで開始。</p>
                 </div>
             `,
