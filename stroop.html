@@ -11,14 +11,12 @@
     <style>
         body { background-color: #FFFFFF; font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; }
         .stimulus-text { font-size: 60px; font-weight: bold; }
-        /* 中央揃え設定に変更 */
         .instruction-text { font-size: 24px; text-align: center; }
         .color-r { color: red; font-weight: bold; }
         .color-b { color: blue; font-weight: bold; }
         .color-g { color: green; font-weight: bold; }
         .bold-text { font-weight: bold; }
         .black-text { color: black; font-weight: normal; }
-        /* 行間調整用スタイル */
         .instruction-row { margin-bottom: 20px; }
     </style>
 </head>
@@ -56,16 +54,16 @@
         // 1. 参加者ID入力
         timeline.push({
             type: jsPsychSurveyText,
-            questions: [{prompt: '参加者ID（学籍番号）を入力してください', name: 'subject_id', required: true}],
+            questions: [{prompt: '参加者IDを入力してください。', name: 'subject_id', required: true}],
             on_finish: function(data) {
                 jsPsych.data.addProperties({subject_id: data.response.subject_id});
             }
         });
 
-        // 2. 全画面化の代替指示
+        // 2. 全画面化の指示
         timeline.push({
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: '<div class="instruction-text"><p>実験を開始します。<br>必要に応じてブラウザの全画面表示機能(F11キー等)を使用してください。<br><br>スペースキーで教示へ進みます。</p></div>',
+            stimulus: '<div class="instruction-text"><p>実験を開始します。<br>ブラウザの全画面表示機能（F11キー）を使用してください。<br><br>スペースキーで教示へ進みます。</p></div>',
             choices: [' ']
         });
 
@@ -98,11 +96,9 @@
             { text: "赤", color: "red", condition: "congruent" }
         ];
 
-        // 合計90試行にするため、9回繰り返す（10種類 * 9 = 90）
         const shuffledStimuli = jsPsych.randomization.repeat(stimuli, 9);
 
         shuffledStimuli.forEach(item => {
-            // 注視点
             timeline.push({
                 type: jsPsychHtmlKeyboardResponse,
                 stimulus: '<div class="stimulus-text">+</div>',
@@ -110,7 +106,6 @@
                 trial_duration: 500
             });
 
-            // 刺激提示
             timeline.push({
                 type: jsPsychHtmlKeyboardResponse,
                 stimulus: `<div class="stimulus-text" style="color: ${item.color}">${item.text}</div>`,
@@ -127,7 +122,6 @@
                 }
             });
 
-            // ITI
             timeline.push({
                 type: jsPsychHtmlKeyboardResponse,
                 stimulus: '',
