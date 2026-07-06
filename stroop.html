@@ -98,7 +98,8 @@
             { text: "赤", color: "red", condition: "congruent" }
         ];
 
-        const shuffledStimuli = jsPsych.randomization.repeat(stimuli, 1);
+        // 合計90試行にするため、9回繰り返す（10種類 * 9 = 90）
+        const shuffledStimuli = jsPsych.randomization.repeat(stimuli, 9);
 
         shuffledStimuli.forEach(item => {
             // 注視点
