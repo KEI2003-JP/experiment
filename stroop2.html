@@ -1,1 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ストループ課題 (Stroop Task)</title>
+    
+    <!-- jsPsych コアライブラリの読み込み (v7.3.4) -->
+    <script src="https://unpkg.com/jspsych@7.3.4"></script>
+    
+    <!-- 必要な jsPsych プラグインの読み込み -->
+    <!-- キーボード入力を受け付けるプラグイン -->
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+    <!-- テキスト入力を受け付けるプラグイン（参加者ID用） -->
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
+    <!-- 全画面表示を行うプラグイン（環境制限エラー回避のためコメントアウト） -->
+    <!-- <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1"></script> -->
+    
+    <!-- jsPsych の基本スタイルシートの読み込み -->
+    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css" />
+    
+    <!-- 実験特有のデザイン要件 (背景色, フォント) の適用 -->
+    <style>
+        body {
+            background-color: #FFFFFF;
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+        }
+        /* 教示テキスト用のスタイル */
+        .instruction-text {
+            font-size: 24px;
+            line-height: 1.6;
+        }
+        /* 刺激テキスト用のスタイル */
+        .stimulus-text {
+            font-size: 60px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // =========================================================
+        // jsPsych の初期化とデータ保存設定
+        // =========================================================
+        const jsPsych = initJsPsych({
+            // 実験終了時の処理
+            on_finish: function() {
+                // jsPsych内部のクリーンアップ処理との競合を防ぐため、処理を少し遅延させる
+                setTimeout(function() {
+                    // 画面を送信中メッセージに書き換える
+                    const displayElement = jsPsych.getDisplayElement();
+                    displayElement.innerHTML = '<div class="instruction-text" style="text-align: center; margin-top: 30vh;"><p>データを送信中です...</p></div>';
 
+                    // 分析対象のデータ（メイン試行の反応）のみを抽出
+                    const responseData = jsPsych.data.get().filter({task: 'response'}).values();
+
+                    // 必要な列だけを抽出したJSONペイロードを作成
+                    const payload = responseData.map(row => ({
+                        subject_id: row.subject_id,
+                        timestamp: row.timestamp,
+                        word: row.word,
+                        color: row.color,
+                        condition: row.condition,
+                        rt: row.rt,
+                        correct: row.correct
+                    }));
+
+                    // GASへデータをPOST送信 (no-corsモード)
+                    fetch('https://script.google.com/macros/s/AKfycby3PsdoQGfMZ_MgdTv0d0m4eUXzsB5ScYfY_vVC-p2qXFc0yCfBNfHA_PWeN_p9nFtE/exec', {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(response => {
+                        displayElement.innerHTML = '<div class="instruction-text" style="text-align: center; margin-top: 30vh;"><p>実験終了。ご協力ありがとうございました。</p></div>';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        displayElement.innerHTML = '<div class="instruction-text" style="text-align: center; margin-top: 30vh;"><p>実験終了。ご協力ありがとうございました。<br><span style="font-size: 16px; color: red;">（データ送信エラーが発生しました）</span></p></div>';
+                    });
+                }, 100); // 100ミリ秒遅延させて実行
+            }
+        });
+
+        // 実験の流れを格納する配列 (Timeline)
+        const timeline = [];
+
+        // =========================================================
+        // (1) 全画面化ボタン
+        // iframe等の環境制限でエラーになるためコメントアウトしてスキップします
+        // =========================================================
+        /*
+        const enter_fullscreen = {
+            type: jsPsychFullscreen,
+            fullscreen_mode: true,
+            message: '<p class="instruction-text">実験を開始します。以下のボタンを押して全画面表示にしてください。</p>',
+            button_label: '全画面化して開始'
+        };
+        timeline.push(enter_fullscreen);
+        */
+
+        // =========================================================
+        // (1.5) ウェルカム画面
+        // =========================================================
+        const welcome = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <div class="instruction-text">
+                    <p>ストループ課題を開始します。</p>
+                    <button id="start-btn" style="font-size: 20px; padding: 10px 30px; margin-top: 30px; cursor: pointer; border: 1px solid #ccc; background-color: #f8f8f8; border-radius: 5px;">実験を開始する</button>
+                </div>
+            `,
+            choices: [' ', 'Enter'], // スペースキーとエンターキーでの進行を許可
+            on_load: function() {
+                // ボタンクリックでも次の画面へ進むように設定
+                document.getElementById('start-btn').addEventListener('click', function() {
+                    // 【修正点】プラグインを強制終了する前に、キーボードのイベントリスナーを解除する
+                    jsPsych.pluginAPI.cancelAllKeyboardResponses();
+                    jsPsych.finishTrial();
+                });
+            }
+        };
+        timeline.push(welcome);
+
+        // =========================================================
+        // (1.8) 参加者ID入力画面
+        // =========================================================
+        const participant_info = {
+            type: jsPsychSurveyText,
+            questions: [
+                {prompt: '<p class="instruction-text">参加者IDを入力してください</p>', name: 'subject_id', required: true}
+            ],
+            button_label: '次へ',
+            on_finish: function(data) {
+                // 入力されたIDを以降のすべての試行データに自動付与
+                jsPsych.data.addProperties({
+                    subject_id: data.response.subject_id
+                });
+            }
+        };
+        timeline.push(participant_info);
+
+        // =========================================================
+        // (2) 教示画面
+        // =========================================================
+        const instructions = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <div class="instruction-text">
+                    <p>文字の<strong>『色』</strong>をキーボードで答えてください。</p>
+                    <p><span style="color: red;">■</span> 赤色なら <strong>'R'</strong></p>
+                    <p><span style="color: blue;">■</span> 青色なら <strong>'B'</strong></p>
+                    <p><span style="color: green;">■</span> 緑色なら <strong>'G'</strong></p>
+                    <p style="margin-top: 40px;">スペースキーで開始します。</p>
+                </div>
+            `,
+            choices: [' '] // スペースキーでのみ次へ進む
+        };
+        timeline.push(instructions);
+
+        // =========================================================
+        // (3) 刺激 (Stimuli) と要因計画の定義
+        // =========================================================
+        const stroop_stimuli = [
+            // 一致条件 (Congruent)
+            { word: "赤", color: "red",   condition: "congruent",   correct_response: "R" },
+            { word: "青", color: "blue",  condition: "congruent",   correct_response: "B" },
+            { word: "緑", color: "green", condition: "congruent",   correct_response: "G" },
+            
+            // 不一致条件 (Incongruent)
+            { word: "赤", color: "blue",  condition: "incongruent", correct_response: "B" },
+            { word: "赤", color: "green", condition: "incongruent", correct_response: "G" },
+            { word: "青", color: "red",   condition: "incongruent", correct_response: "R" },
+            { word: "青", color: "green", condition: "incongruent", correct_response: "G" },
+            { word: "緑", color: "red",   condition: "incongruent", correct_response: "R" },
+            { word: "緑", color: "blue",  condition: "incongruent", correct_response: "B" }
+        ];
+
+        // =========================================================
+        // (4) メイン試行ループの定義
+        // =========================================================
+        
+        // a. 注視点 (+): 500ms表示
+        const fixation = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: '<div class="stimulus-text" style="color: black;">+</div>',
+            choices: "NO_KEYS", // キー入力を受け付けない
+            trial_duration: 500, // 500ミリ秒表示
+            data: {
+                task: 'fixation'
+            }
+        };
+
+        // b. 刺激提示: キー入力があるまで無限に表示 + c. 試行間隔 (ITI)
+        const trial = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: function() {
+                // timelineVariable を用いて、ランダムに選ばれた刺激の文字と色を取得
+                const word = jsPsych.timelineVariable('word');
+                const color = jsPsych.timelineVariable('color');
+                return `<div class="stimulus-text" style="color: ${color};">${word}</div>`;
+            },
+            choices: ['R', 'B', 'G'], // 許可されるキー
+            trial_duration: null, // キー入力があるまで無限に待ち続ける（明示的に指定）
+            // 試行データとして変数を記録
+            data: {
+                task: 'response',
+                word: jsPsych.timelineVariable('word'),
+                color: jsPsych.timelineVariable('color'),
+                condition: jsPsych.timelineVariable('condition'),
+                correct_response: jsPsych.timelineVariable('correct_response')
+            },
+            // 試行終了時の正誤判定
+            on_finish: function(data){
+                // 押されたキーと正答キーを比較し、correct (true/false) を保存
+                // 空欄にならず確実に boolean (true/false) になるよう === true を付加
+                data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_response) === true;
+                // 実施日時 (タイムスタンプ) を記録
+                data.timestamp = new Date().toISOString();
+            },
+            // c. 試行間隔 (ITI): 1000ms 画面を空白にする
+            post_trial_gap: 1000 
+        };
+
+        // メイン試行手順 (注視点 -> 刺激提示) をまとめる
+        const test_procedure = {
+            timeline: [fixation, trial],
+            timeline_variables: stroop_stimuli,
+            // 10試行をランダム (復元抽出) に実施
+            sample: {
+                type: 'with-replacement',
+                size: 10 
+            }
+        };
+        timeline.push(test_procedure);
+
+        // =========================================================
+        // 実験の実行
+        // =========================================================
+        jsPsych.run(timeline);
+    </script>
+</body>
+</html>
